@@ -1,5 +1,127 @@
 # @backstage/plugin-scaffolder-node-test-utils
 
+## 0.1.13-next.0
+
+### Patch Changes
+
+- 094eaa3: Remove references to in-repo backend-common
+- Updated dependencies
+  - @backstage/plugin-scaffolder-node@0.5.0-next.0
+  - @backstage/backend-test-utils@1.0.1-next.0
+  - @backstage/types@1.1.1
+
+## 0.1.12
+
+### Patch Changes
+
+- Updated dependencies
+  - @backstage/backend-common@0.25.0
+  - @backstage/backend-test-utils@1.0.0
+  - @backstage/types@1.1.1
+  - @backstage/plugin-scaffolder-node@0.4.11
+
+## 0.1.12-next.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @backstage/backend-common@0.25.0-next.2
+  - @backstage/backend-test-utils@1.0.0-next.2
+  - @backstage/types@1.1.1
+  - @backstage/plugin-scaffolder-node@0.4.11-next.2
+
+## 0.1.12-next.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @backstage/backend-common@0.25.0-next.1
+  - @backstage/backend-test-utils@0.6.0-next.1
+  - @backstage/types@1.1.1
+  - @backstage/plugin-scaffolder-node@0.4.11-next.1
+
+## 0.1.12-next.0
+
+### Patch Changes
+
+- Updated dependencies
+  - @backstage/backend-common@0.25.0-next.0
+  - @backstage/backend-test-utils@0.6.0-next.0
+  - @backstage/plugin-scaffolder-node@0.4.11-next.0
+  - @backstage/types@1.1.1
+
+## 0.1.10
+
+### Patch Changes
+
+- Updated dependencies
+  - @backstage/backend-common@0.24.0
+  - @backstage/backend-test-utils@0.5.0
+  - @backstage/plugin-scaffolder-node@0.4.9
+  - @backstage/types@1.1.1
+
+## 0.1.10-next.3
+
+### Patch Changes
+
+- Updated dependencies
+  - @backstage/backend-common@0.23.4-next.3
+  - @backstage/backend-test-utils@0.4.5-next.3
+  - @backstage/types@1.1.1
+  - @backstage/plugin-scaffolder-node@0.4.9-next.3
+
+## 0.1.10-next.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @backstage/backend-test-utils@0.4.5-next.2
+  - @backstage/plugin-scaffolder-node@0.4.9-next.2
+  - @backstage/backend-common@0.23.4-next.2
+  - @backstage/types@1.1.1
+
+## 0.1.10-next.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @backstage/backend-common@0.23.4-next.1
+  - @backstage/backend-test-utils@0.4.5-next.1
+  - @backstage/types@1.1.1
+  - @backstage/plugin-scaffolder-node@0.4.9-next.1
+
+## 0.1.10-next.0
+
+### Patch Changes
+
+- Updated dependencies
+  - @backstage/backend-common@0.23.4-next.0
+  - @backstage/backend-test-utils@0.4.5-next.0
+  - @backstage/types@1.1.1
+  - @backstage/plugin-scaffolder-node@0.4.9-next.0
+
+## 0.1.9
+
+### Patch Changes
+
+- 54429b5: Filename and imports correction for mockActionContext.ts
+- Updated dependencies
+  - @backstage/backend-test-utils@0.4.4
+  - @backstage/backend-common@0.23.3
+  - @backstage/plugin-scaffolder-node@0.4.8
+  - @backstage/types@1.1.1
+
+## 0.1.9-next.1
+
+### Patch Changes
+
+- 54429b5: Filename and imports correction for mockActionContext.ts
+- Updated dependencies
+  - @backstage/backend-test-utils@0.4.4-next.1
+  - @backstage/backend-common@0.23.3-next.1
+  - @backstage/types@1.1.1
+  - @backstage/plugin-scaffolder-node@0.4.8-next.1
+
 ## 0.1.8-next.0
 
 ### Patch Changes

@@ -51,7 +51,7 @@ Additional steps for the main line release
   - Mention any security fixes
 - Create Release Notes PR
   - Add the release note file as [`/docs/releases/vx.y.0.md`](./releases)
-  - Add an entry to [`/microsite/sidebar.json`](https://github.com/backstage/backstage/blob/master/microsite/sidebars.json) for the release note
+  - Add an entry to [`/microsite/sidebar.js`](https://github.com/backstage/backstage/blob/master/microsite/sidebars.js) for the release note
   - Update the navigation bar item in [`/microsite/docusaurus.config.ts`](https://github.com/backstage/backstage/blob/master/microsite/docusaurus.config.ts) to point to the new release note
   - Finally copy the content, without the metadata header, into the description of the [`Version Packages` Pull Request](https://github.com/backstage/backstage/pulls?q=is%3Aopen+is%3Apr+in%3Atitle+%22Version+Packages)
 
@@ -75,7 +75,7 @@ Given one or more PRs towards master that we want to create a patch release for,
 ./scripts/patch-release-for-pr.js <pr-number> <pr-number-2> ...
 ```
 
-Wait until the script has finished executing, at the end of the output you will find a link of the format `https://github.com/backstage/backstage/compare/patch/...`. Open this link in your browser to create a PR for the patch release. Finish the sentence "This release fixes an issue where..." and create the PR.
+Wait until the script has finished executing, at the end of the output you will find a link of the format `https://github.com/backstage/backstage/pull/new/patch-release-pr-...`. Open this link in your browser to create a PR for the patch release. Finish the sentence "This release fixes an issue where..." and create the PR.
 
 Once the PR has been approved and merged, the patch release will be automatically created. The patch release is complete when a notification has been posted to Discord in the `#announcements` channel. Keep an eye on "Deploy Packages" workflow and re-trigger if it fails. It is safe to re-trigger any part of this workflow, including the release step.
 

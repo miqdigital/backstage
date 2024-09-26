@@ -38,7 +38,7 @@ import {
   ServiceMock,
   mockCredentials,
   mockServices,
-  setupRequestMockHandlers,
+  registerMswTestHooks,
   startTestBackend,
 } from '@backstage/backend-test-utils';
 import { rest } from 'msw';
@@ -56,7 +56,7 @@ import {
   kubernetesFetcherExtensionPoint,
   kubernetesServiceLocatorExtensionPoint,
 } from '@backstage/plugin-kubernetes-node';
-import { ExtendedHttpServer } from '@backstage/backend-app-api';
+import { ExtendedHttpServer } from '@backstage/backend-defaults/rootHttpRouter';
 
 describe('API integration tests', () => {
   let app: ExtendedHttpServer;
@@ -508,7 +508,7 @@ describe('API integration tests', () => {
 
   describe('/proxy', () => {
     const worker = setupServer();
-    setupRequestMockHandlers(worker);
+    registerMswTestHooks(worker);
 
     beforeEach(() => {
       worker.use(
@@ -728,6 +728,19 @@ metadata:
     const throwError = () =>
       startTestBackend({
         features: [
+          mockServices.rootConfig.factory({
+            data: {
+              kubernetes: {
+                serviceLocatorMethod: { type: 'multiTenant' },
+                clusterLocatorMethods: [
+                  {
+                    type: 'config',
+                    clusters: [],
+                  },
+                ],
+              },
+            },
+          }),
           import('@backstage/plugin-kubernetes-backend/alpha'),
           createBackendModule({
             pluginId: 'kubernetes',

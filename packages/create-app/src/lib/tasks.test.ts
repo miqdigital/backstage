@@ -31,7 +31,7 @@ import {
 } from './tasks';
 import {
   createMockDirectory,
-  setupRequestMockHandlers,
+  registerMswTestHooks,
 } from '@backstage/backend-test-utils';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
@@ -50,7 +50,6 @@ jest.mock('./versions', () => ({
   packageVersions: {
     root: '1.2.3',
     '@backstage/cli': '1.0.0',
-    '@backstage/backend-common': '1.0.0',
     '@backstage/backend-defaults': '1.0.0',
     '@backstage/backend-tasks': '1.0.0',
     '@backstage/catalog-model': '1.0.0',
@@ -62,6 +61,7 @@ jest.mock('./versions', () => ({
     '@backstage/plugin-auth-backend-module-github-provider': '1.0.0',
     '@backstage/plugin-auth-backend-module-guest-provider': '1.0.0',
     '@backstage/plugin-catalog-backend': '1.0.0',
+    '@backstage/plugin-catalog-backend-module-logs': '1.0.0',
     '@backstage/plugin-catalog-backend-module-scaffolder-entity-model': '1.0.0',
     '@backstage/plugin-permission-common': '1.0.0',
     '@backstage/plugin-permission-node': '1.0.0',
@@ -87,6 +87,8 @@ jest.mock('./versions', () => ({
     '@backstage/plugin-catalog-graph': '1.0.0',
     '@backstage/plugin-catalog-import': '1.0.0',
     '@backstage/plugin-catalog-react': '1.0.0',
+    '@backstage/plugin-kubernetes': '1.0.0',
+    '@backstage/plugin-kubernetes-backend': '1.0.0',
     '@backstage/plugin-org': '1.0.0',
     '@backstage/plugin-scaffolder': '1.0.0',
     '@backstage/plugin-permission-react': '1.0.0',
@@ -207,41 +209,15 @@ describe('tasks', () => {
       await expect(buildAppTask(appDir)).resolves.not.toThrow();
       expect(mockChdir).toHaveBeenCalledTimes(1);
       expect(mockChdir).toHaveBeenNthCalledWith(1, appDir);
-      expect(mockExec).toHaveBeenCalledTimes(3);
+      expect(mockExec).toHaveBeenCalledTimes(2);
       expect(mockExec).toHaveBeenNthCalledWith(
         1,
-        'yarn --version',
-        expect.any(Function),
-      );
-      expect(mockExec).toHaveBeenNthCalledWith(
-        2,
         'yarn install',
         expect.any(Function),
       );
       expect(mockExec).toHaveBeenNthCalledWith(
-        3,
+        2,
         'yarn tsc',
-        expect.any(Function),
-      );
-    });
-
-    it('should error out on incorrect yarn version', async () => {
-      // requires callback implementation to support `promisify` wrapper
-      // https://stackoverflow.com/a/60579617/10044859
-      mockExec.mockImplementation((_command, callback) => {
-        callback(null, { stdout: '3.2.1', stderr: 'standard error' });
-      });
-
-      const appDir = 'projects/dir';
-      await expect(buildAppTask(appDir)).rejects.toThrow(
-        /^@backstage\/create-app requires Yarn v1, found '3\.2\.1'/,
-      );
-      expect(mockChdir).toHaveBeenCalledTimes(1);
-      expect(mockChdir).toHaveBeenNthCalledWith(1, appDir);
-      expect(mockExec).toHaveBeenCalledTimes(1);
-      expect(mockExec).toHaveBeenNthCalledWith(
-        1,
-        'yarn --version',
         expect.any(Function),
       );
     });
@@ -422,7 +398,7 @@ describe('tasks', () => {
 
   describe('fetchYarnLockSeedTask', () => {
     const worker = setupServer();
-    setupRequestMockHandlers(worker);
+    registerMswTestHooks(worker);
 
     it('should fetch the yarn.lock seed file', async () => {
       worker.use(

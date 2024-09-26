@@ -431,7 +431,7 @@ catalog:
         /* highlight-add-end */
 ```
 
-#### Github
+#### GitHub
 
 For `GithubDiscoveryProcessor`, `GithubMultiOrgReaderProcessor` and `GithubOrgReaderProcessor`, first migrate to the equivalent Entity Provider.
 
@@ -445,7 +445,7 @@ backend.add(import('@backstage/plugin-catalog-backend-module-github/alpha'));
 ```
 
 If you were providing a `schedule` in code, this now needs to be set via configuration.
-All other Github configuration in `app-config.yaml` remains the same.
+All other GitHub configuration in `app-config.yaml` remains the same.
 
 ```yaml title="app-config.yaml"
 catalog:
@@ -497,7 +497,7 @@ catalog:
   providers:
     githubOrg:
       - id: production
-        githubUrl: 'https://github.com',
+        githubUrl: 'https://github.com'
         orgs: ['backstage']
         schedule:
           frequency: PT30M
@@ -536,8 +536,8 @@ catalog:
   providers:
     githubOrg:
       - id: production
-        githubUrl: 'https://github.com',
-        orgs: ['org-a', 'org-b'],
+        githubUrl: 'https://github.com'
+        orgs: ['org-a', 'org-b']
         schedule:
           frequency: PT30M
           timeout: PT15M
@@ -675,7 +675,7 @@ backend.add(
   import('@backstage/plugin-catalog-backend-module-scaffolder-entity-model'),
 );
 /* highlight-add-next-line */
-backend.add(catalogModuleCustomExtensions());
+backend.add(catalogModuleCustomExtensions);
 ```
 
 This also requires that you have a dependency on the corresponding node package,
@@ -762,9 +762,9 @@ const otherPluginModuleCustomExtensions = createBackendModule({
 const backend = createBackend();
 backend.add(import('@backstage/plugin-events-backend/alpha'));
 /* highlight-add-next-line */
-backend.add(eventsModuleCustomExtensions());
+backend.add(eventsModuleCustomExtensions);
 /* highlight-add-next-line */
-backend.add(otherPluginModuleCustomExtensions());
+backend.add(otherPluginModuleCustomExtensions);
 ```
 
 Here we've placed the module directly in the backend index file just to get
@@ -841,7 +841,7 @@ const scaffolderModuleCustomExtensions = createBackendModule({
 const backend = createBackend();
 backend.add(import('@backstage/plugin-scaffolder-backend/alpha'));
 /* highlight-add-next-line */
-backend.add(scaffolderModuleCustomExtensions());
+backend.add(scaffolderModuleCustomExtensions);
 ```
 
 This also requires that you have a dependency on the corresponding node package,
@@ -1254,7 +1254,6 @@ In order to add your own permission policy you'll need to do the following:
 
 ```ts
 import { createBackendModule } from '@backstage/backend-plugin-api';
-import { BackstageIdentityResponse } from '@backstage/plugin-auth-node';
 import {
   PolicyDecision,
   AuthorizeResult,
@@ -1262,13 +1261,14 @@ import {
 import {
   PermissionPolicy,
   PolicyQuery,
+  PolicyQueryUser,
 } from '@backstage/plugin-permission-node';
 import { policyExtensionPoint } from '@backstage/plugin-permission-node/alpha';
 
 class CustomPermissionPolicy implements PermissionPolicy {
   async handle(
     request: PolicyQuery,
-    user?: BackstageIdentityResponse,
+    user?: PolicyQueryUser,
   ): Promise<PolicyDecision> {
     // TODO: Add code here that inspects the incoming request and user, and returns AuthorizeResult.ALLOW, AuthorizeResult.DENY, or AuthorizeResult.CONDITIONAL as needed. See the docs at https://backstage.io/docs/permissions/writing-a-policy for more information
 

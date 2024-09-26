@@ -1,11 +1,8 @@
 [![headline](docs/assets/headline.png)](https://backstage.io/)
 
-> [!NOTE]
-> 🏖 From July 1st through 16th, due to maintainers being on summer vacations, expect the project to move a little slower than normal, and support to be limited. Normal service will resume after that! 🏝
-
 # [Backstage](https://backstage.io)
 
-English \| [한국어](README-ko_kr.md) \| [中文版](README-zh_Hans.md)
+English \| [한국어](README-ko_kr.md) \| [中文版](README-zh_Hans.md) \| [Français](README-fr_FR.md)
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![CNCF Status](https://img.shields.io/badge/cncf%20status-incubation-blue.svg)](https://www.cncf.io/projects)
@@ -58,13 +55,17 @@ To engage with our community, you can use the following resources:
 - [Discord chatroom](https://discord.gg/backstage-687207715902193673) - Get support or discuss the project
 - [Contributing to Backstage](https://github.com/backstage/backstage/blob/master/CONTRIBUTING.md) - Start here if you want to contribute
 - [RFCs](https://github.com/backstage/backstage/labels/rfc) - Help shape the technical direction
-- [FAQ](https://backstage.io/docs/FAQ) - Frequently Asked Questions
+- [FAQ](https://backstage.io/docs/faq) - Frequently Asked Questions
 - [Code of Conduct](CODE_OF_CONDUCT.md) - This is how we roll
 - [Adopters](ADOPTERS.md) - Companies already using Backstage
 - [Blog](https://backstage.io/blog/) - Announcements and updates
 - [Newsletter](https://spoti.fi/backstagenewsletter) - Subscribe to our email newsletter
 - [Backstage Community Sessions](https://github.com/backstage/community) - Join monthly meetups and explore Backstage community
 - Give us a star ⭐️ - If you are using Backstage or think it is an interesting project, we would love a star ❤️
+
+## Governance
+
+See the [GOVERNANCE.md](https://github.com/backstage/community/blob/main/GOVERNANCE.md) document in the [backstage/community](https://github.com/backstage/community) repository.
 
 ## License
 

@@ -100,3 +100,19 @@ With that, Backstage's cli and backend will detect public entry point and serve 
 5. Finally, as soon as you log in, you will be redirected to the main app home page (inspect the page and see that the protected bundle was served from the app backend after the redirect).
 
 That's it!
+
+## New Frontend System
+
+If your app uses the new frontend system, you can still use the public entry point feature. The `index-public-experimental.tsx` file does end up looking a bit different in this case:
+
+```tsx title="in packages/app/src/index-public-experimental.tsx"
+import ReactDOM from 'react-dom/client';
+import { signInPageModule } from './overrides/SignInPage';
+import { createPublicSignInApp } from '@backstage/frontend-defaults';
+
+const app = createPublicSignInApp({
+  features: [signInPageModule],
+});
+
+ReactDOM.createRoot(document.getElementById('root')!).render(app.createRoot());
+```

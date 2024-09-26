@@ -37,7 +37,6 @@ import {
   patchMkdocsYmlWithPlugins,
 } from './mkdocsPatchers';
 import yaml from 'js-yaml';
-import { loggerToWinstonLogger } from '@backstage/backend-common';
 
 const mockEntity = {
   apiVersion: 'version',
@@ -93,7 +92,7 @@ const mkdocsYmlWithAdditionalPluginsWithConfig = fs.readFileSync(
 const mkdocsYmlWithEnvTag = fs.readFileSync(
   resolvePath(__filename, '../__fixtures__/mkdocs_with_env_tag.yml'),
 );
-const mockLogger = loggerToWinstonLogger(mockServices.logger.mock());
+const mockLogger = mockServices.logger.mock();
 const warn = jest.spyOn(mockLogger, 'warn');
 
 const scmIntegrations = ScmIntegrations.fromConfig(new ConfigReader({}));
@@ -115,6 +114,7 @@ describe('helpers', () => {
       url                                                                        | repo_url                                                                   | edit_uri
       ${'https://github.com/backstage/backstage'}                                | ${'https://github.com/backstage/backstage'}                                | ${undefined}
       ${'https://github.com/backstage/backstage/tree/main/examples/techdocs/'}   | ${'https://github.com/backstage/backstage/tree/main/examples/techdocs/'}   | ${'https://github.com/backstage/backstage/edit/main/examples/techdocs/docs'}
+      ${'https://github.com/backstage/backstage/tree/main/examples/techdocs'}    | ${'https://github.com/backstage/backstage/tree/main/examples/techdocs'}    | ${'https://github.com/backstage/backstage/edit/main/examples/techdocs/docs'}
       ${'https://github.com/backstage/backstage/tree/main/'}                     | ${'https://github.com/backstage/backstage/tree/main/'}                     | ${'https://github.com/backstage/backstage/edit/main/docs'}
       ${'https://gitlab.com/backstage/backstage'}                                | ${'https://gitlab.com/backstage/backstage'}                                | ${undefined}
       ${'https://gitlab.com/backstage/backstage/-/blob/main/examples/techdocs/'} | ${'https://gitlab.com/backstage/backstage/-/blob/main/examples/techdocs/'} | ${'https://gitlab.com/backstage/backstage/-/edit/main/examples/techdocs/docs'}
@@ -247,6 +247,10 @@ describe('helpers', () => {
       expect(updatedMkdocsYml.toString()).toContain(
         "emoji_index: !!python/name:materialx.emoji.twemoji ''",
       );
+      expect(updatedMkdocsYml.toString()).toContain(
+        'slugify: !!python/object/apply:pymdownx.slugs.slugify',
+      );
+      expect(updatedMkdocsYml.toString()).toContain('case: lower');
     });
 
     it('should not override existing repo_url in mkdocs.yml', async () => {
@@ -295,7 +299,32 @@ describe('helpers', () => {
         'edit_uri: https://github.com/backstage/backstage/edit/main/docs',
       );
       expect(updatedMkdocsYml.toString()).not.toContain(
-        'https://github.com/neworg/newrepo',
+        'edit_uri: https://github.com/neworg/newrepo',
+      );
+    });
+
+    it('should add edit_uri to mkdocs.yml with existing repo_url', async () => {
+      const parsedLocationAnnotation: ParsedLocationAnnotation = {
+        type: 'url',
+        target: 'https://github.com/neworg/newrepo/tree/main/',
+      };
+
+      await patchMkdocsYmlPreBuild(
+        mockDir.resolve('mkdocs_with_repo_url.yml'),
+        mockLogger,
+        parsedLocationAnnotation,
+        scmIntegrations,
+      );
+
+      const updatedMkdocsYml = await fs.readFile(
+        mockDir.resolve('mkdocs_with_repo_url.yml'),
+      );
+
+      expect(updatedMkdocsYml.toString()).toContain(
+        'edit_uri: https://github.com/neworg/newrepo/edit/main/docs',
+      );
+      expect(updatedMkdocsYml.toString()).toContain(
+        'repo_url: https://github.com/backstage/backstage',
       );
     });
 

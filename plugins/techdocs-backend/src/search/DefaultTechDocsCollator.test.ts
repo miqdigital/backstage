@@ -14,20 +14,18 @@
  * limitations under the License.
  */
 
-import {
-  PluginEndpointDiscovery,
-  TokenManager,
-  loggerToWinstonLogger,
-} from '@backstage/backend-common';
+import { TokenManager, loggerToWinstonLogger } from '@backstage/backend-common';
 import { Entity } from '@backstage/catalog-model';
 import { DefaultTechDocsCollator } from './DefaultTechDocsCollator';
 import {
   mockServices,
-  setupRequestMockHandlers,
+  registerMswTestHooks,
 } from '@backstage/backend-test-utils';
 import { setupServer } from 'msw/node';
 import { rest } from 'msw';
 import { ConfigReader } from '@backstage/config';
+import { TECHDOCS_ANNOTATION } from '@backstage/plugin-techdocs-common';
+import { DiscoveryService } from '@backstage/backend-plugin-api';
 
 const logger = loggerToWinstonLogger(mockServices.logger.mock());
 
@@ -66,7 +64,7 @@ const expectedEntities: Entity[] = [
       name: 'test-entity-with-docs',
       description: 'Documented description',
       annotations: {
-        'backstage.io/techdocs-ref': './',
+        [TECHDOCS_ANNOTATION]: './',
       },
     },
     spec: {
@@ -79,10 +77,10 @@ const expectedEntities: Entity[] = [
 
 describe('TechDocs Collator', () => {
   const worker = setupServer();
-  setupRequestMockHandlers(worker);
+  registerMswTestHooks(worker);
 
   describe('DefaultTechDocsCollator with legacyPathCasing configuration', () => {
-    let mockDiscoveryApi: jest.Mocked<PluginEndpointDiscovery>;
+    let mockDiscoveryApi: jest.Mocked<DiscoveryService>;
     let mockTokenManager: jest.Mocked<TokenManager>;
     let collator: DefaultTechDocsCollator;
 
@@ -146,7 +144,7 @@ describe('TechDocs Collator', () => {
   });
 
   describe('DefaultTechDocsCollator', () => {
-    let mockDiscoveryApi: jest.Mocked<PluginEndpointDiscovery>;
+    let mockDiscoveryApi: jest.Mocked<DiscoveryService>;
     let mockTokenManager: jest.Mocked<TokenManager>;
     let collator: DefaultTechDocsCollator;
 

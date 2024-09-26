@@ -58,9 +58,12 @@ describe('config', () => {
         userPattern: /[\s\S]*/,
         orgEnabled: false,
         allowInherited: false,
+        relations: [],
         schedule: undefined,
         skipForkedRepos: false,
+        excludeRepos: [],
         restrictUsersToGroup: false,
+        includeUsersWithoutSeat: false,
       }),
     );
   });
@@ -76,6 +79,7 @@ describe('config', () => {
               branch: 'not-master',
               fallbackBranch: 'main',
               entityFilename: 'custom-file.yaml',
+              includeUsersWithoutSeat: true,
             },
           },
         },
@@ -97,9 +101,12 @@ describe('config', () => {
         userPattern: /[\s\S]*/,
         orgEnabled: false,
         allowInherited: false,
+        relations: [],
         schedule: undefined,
         skipForkedRepos: false,
+        excludeRepos: [],
         restrictUsersToGroup: false,
+        includeUsersWithoutSeat: true,
       }),
     );
   });
@@ -137,9 +144,56 @@ describe('config', () => {
         userPattern: /[\s\S]*/,
         orgEnabled: false,
         allowInherited: false,
+        relations: [],
         schedule: undefined,
         restrictUsersToGroup: false,
+        excludeRepos: [],
         skipForkedRepos: true,
+        includeUsersWithoutSeat: false,
+      }),
+    );
+  });
+
+  it('valid config with excludeRepos', () => {
+    const config = new ConfigReader({
+      catalog: {
+        providers: {
+          gitlab: {
+            test: {
+              group: 'group',
+              host: 'host',
+              branch: 'not-master',
+              fallbackBranch: 'main',
+              entityFilename: 'custom-file.yaml',
+              skipForkedRepos: false,
+              excludeRepos: ['foo/bar', 'quz/qux'],
+            },
+          },
+        },
+      },
+    });
+
+    const result = readGitlabConfigs(config);
+    expect(result).toHaveLength(1);
+    result.forEach(r =>
+      expect(r).toStrictEqual({
+        id: 'test',
+        group: 'group',
+        branch: 'not-master',
+        fallbackBranch: 'main',
+        host: 'host',
+        catalogFile: 'custom-file.yaml',
+        projectPattern: /[\s\S]*/,
+        groupPattern: /[\s\S]*/,
+        userPattern: /[\s\S]*/,
+        orgEnabled: false,
+        allowInherited: false,
+        relations: [],
+        schedule: undefined,
+        restrictUsersToGroup: false,
+        skipForkedRepos: false,
+        excludeRepos: ['foo/bar', 'quz/qux'],
+        includeUsersWithoutSeat: false,
       }),
     );
   });
@@ -179,8 +233,11 @@ describe('config', () => {
         userPattern: /[\s\S]*/,
         orgEnabled: false,
         allowInherited: false,
+        relations: [],
         skipForkedRepos: false,
         restrictUsersToGroup: false,
+        excludeRepos: [],
+        includeUsersWithoutSeat: false,
         schedule: {
           frequency: { minutes: 30 },
           timeout: {

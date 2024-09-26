@@ -15,7 +15,7 @@
  */
 
 import React from 'react';
-import { createApp } from '@backstage/frontend-app-api';
+import { createApp } from '@backstage/frontend-defaults';
 import { pagesPlugin } from './examples/pagesPlugin';
 import notFoundErrorPage from './examples/notFoundErrorPageExtension';
 import userSettingsPlugin from '@backstage/plugin-user-settings/alpha';
@@ -26,28 +26,32 @@ import homePlugin, {
 import {
   coreExtensionData,
   createExtension,
-  createApiExtension,
-  createExtensionOverrides,
+  ApiBlueprint,
+  createFrontendModule,
 } from '@backstage/frontend-plugin-api';
-import techdocsPlugin from '@backstage/plugin-techdocs/alpha';
+import {
+  techdocsPlugin,
+  TechDocsIndexPage,
+  TechDocsReaderPage,
+  EntityTechdocsContent,
+} from '@backstage/plugin-techdocs';
 import appVisualizerPlugin from '@backstage/plugin-app-visualizer';
 import { homePage } from './HomePage';
 import { convertLegacyApp } from '@backstage/core-compat-api';
 import { FlatRoutes } from '@backstage/core-app-api';
 import { Route } from 'react-router';
 import { CatalogImportPage } from '@backstage/plugin-catalog-import';
-import {
-  createApiFactory,
-  configApiRef,
-  SignInPageProps,
-} from '@backstage/core-plugin-api';
+import { createApiFactory, configApiRef } from '@backstage/core-plugin-api';
 import {
   ScmAuth,
   ScmIntegrationsApi,
   scmIntegrationsApiRef,
 } from '@backstage/integration-react';
-import { createSignInPageExtension } from '@backstage/frontend-plugin-api';
-import { SignInPage } from '@backstage/core-components';
+import kubernetesPlugin from '@backstage/plugin-kubernetes/alpha';
+import { signInPageModule } from './overrides/SignInPage';
+import { convertLegacyPlugin } from '@backstage/core-compat-api';
+import { convertLegacyPageExtension } from '@backstage/core-compat-api';
+import { convertLegacyEntityContentExtension } from '@backstage/plugin-catalog-react/alpha';
 
 /*
 
@@ -78,34 +82,67 @@ TODO:
 
 /* app.tsx */
 
-const homePageExtension = createExtension({
-  name: 'myhomepage',
-  attachTo: { id: 'page:home', input: 'props' },
-  output: {
-    children: coreExtensionData.reactElement,
-    title: titleExtensionDataRef,
-  },
-  factory() {
-    return { children: homePage, title: 'just a title' };
-  },
+/**
+ * TechDocs does support the new frontend system so this conversion is not
+ * strictly necessary, but it's left here to provide a demo of the utilities for
+ * converting legacy plugins.
+ */
+const convertedTechdocsPlugin = convertLegacyPlugin(techdocsPlugin, {
+  extensions: [
+    // TODO: We likely also need a way to convert an entire <Route> tree similar to collectLegacyRoutes
+    convertLegacyPageExtension(TechDocsIndexPage, {
+      name: 'index',
+      defaultPath: '/docs',
+    }),
+    convertLegacyPageExtension(TechDocsReaderPage, {
+      defaultPath: '/docs/:namespace/:kind/:name/*',
+    }),
+    convertLegacyEntityContentExtension(EntityTechdocsContent),
+  ],
 });
 
-const signInPage = createSignInPageExtension({
-  name: 'guest',
-  loader: async () => (props: SignInPageProps) =>
-    <SignInPage {...props} providers={['guest']} />,
+const customHomePageModule = createFrontendModule({
+  pluginId: 'home',
+  extensions: [
+    createExtension({
+      name: 'my-home-page',
+      attachTo: { id: 'page:home', input: 'props' },
+      output: [coreExtensionData.reactElement, titleExtensionDataRef],
+      factory() {
+        return [
+          coreExtensionData.reactElement(homePage),
+          titleExtensionDataRef('just a title'),
+        ];
+      },
+    }),
+  ],
 });
 
-const scmAuthExtension = createApiExtension({
-  factory: ScmAuth.createDefaultApiFactory(),
+const scmModule = createFrontendModule({
+  pluginId: 'app',
+  extensions: [
+    ApiBlueprint.make({
+      name: 'scm-auth',
+      params: {
+        factory: ScmAuth.createDefaultApiFactory(),
+      },
+    }),
+    ApiBlueprint.make({
+      name: 'scm-integrations',
+      params: {
+        factory: createApiFactory({
+          api: scmIntegrationsApiRef,
+          deps: { configApi: configApiRef },
+          factory: ({ configApi }) => ScmIntegrationsApi.fromConfig(configApi),
+        }),
+      },
+    }),
+  ],
 });
 
-const scmIntegrationApi = createApiExtension({
-  factory: createApiFactory({
-    api: scmIntegrationsApiRef,
-    deps: { configApi: configApiRef },
-    factory: ({ configApi }) => ScmIntegrationsApi.fromConfig(configApi),
-  }),
+const notFoundErrorPageModule = createFrontendModule({
+  pluginId: 'app',
+  extensions: [notFoundErrorPage],
 });
 
 const collectedLegacyPlugins = convertLegacyApp(
@@ -117,20 +154,16 @@ const collectedLegacyPlugins = convertLegacyApp(
 const app = createApp({
   features: [
     pagesPlugin,
-    techdocsPlugin,
+    convertedTechdocsPlugin,
     userSettingsPlugin,
     homePlugin,
     appVisualizerPlugin,
+    kubernetesPlugin,
+    signInPageModule,
+    scmModule,
+    notFoundErrorPageModule,
+    customHomePageModule,
     ...collectedLegacyPlugins,
-    createExtensionOverrides({
-      extensions: [
-        homePageExtension,
-        scmAuthExtension,
-        scmIntegrationApi,
-        signInPage,
-        notFoundErrorPage,
-      ],
-    }),
   ],
   /* Handled through config instead */
   // bindRoutes({ bind }) {

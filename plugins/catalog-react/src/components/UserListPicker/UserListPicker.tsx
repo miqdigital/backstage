@@ -28,7 +28,7 @@ import MenuItem from '@material-ui/core/MenuItem';
 import Typography from '@material-ui/core/Typography';
 import { makeStyles } from '@material-ui/core/styles';
 import SettingsIcon from '@material-ui/icons/Settings';
-import StarIcon from '@material-ui/icons/Star';
+import { StarIcon } from '@backstage/core-components';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { EntityUserFilter } from '../../filters';
 import { useEntityList } from '../../hooks';
@@ -74,9 +74,7 @@ const useStyles = makeStyles(
       margin: theme.spacing(1, 1, 2, 1),
     },
   }),
-  {
-    name: 'CatalogReactUserListPicker',
-  },
+  { name: 'CatalogReactUserListPicker' },
 );
 
 export type ButtonGroup = {
@@ -247,11 +245,11 @@ export const UserListPicker = (props: UserListPickerProps) => {
           </Typography>
           <Card className={classes.groupWrapper}>
             <List disablePadding dense role="menu" aria-label={group.name}>
-              {group.items.map(item => (
+              {group.items.map((item, index) => (
                 <MenuItem
                   role="none presentation"
                   key={item.id}
-                  divider
+                  divider={index !== group.items.length - 1}
                   onClick={() => setSelectedUserFilter(item.id)}
                   selected={item.id === filters.user?.value}
                   className={classes.menuItem}

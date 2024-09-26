@@ -14,114 +14,98 @@
  * limitations under the License.
  */
 
-import React from 'react';
-import { MemoryRouter, Link } from 'react-router-dom';
-import { RenderResult, render } from '@testing-library/react';
-import { createSpecializedApp } from '@backstage/frontend-app-api';
 import {
+  AnyExtensionDataRef,
+  AppNode,
+  AppTree,
+  Extension,
+  ExtensionDataRef,
   ExtensionDefinition,
-  IconComponent,
-  RouteRef,
+  ExtensionDefinitionParameters,
   coreExtensionData,
-  createExtension,
-  createExtensionInput,
-  createExtensionOverrides,
-  createNavItemExtension,
-  createRouterExtension,
-  useRouteRef,
 } from '@backstage/frontend-plugin-api';
-import { MockConfigApi } from '@backstage/test-utils';
+import { Config, ConfigReader } from '@backstage/config';
 import { JsonArray, JsonObject, JsonValue } from '@backstage/types';
 // eslint-disable-next-line @backstage/no-relative-monorepo-imports
 import { resolveExtensionDefinition } from '../../../frontend-plugin-api/src/wiring/resolveExtensionDefinition';
 // eslint-disable-next-line @backstage/no-relative-monorepo-imports
-import { toInternalExtensionDefinition } from '../../../frontend-plugin-api/src/wiring/createExtension';
-
-const NavItem = (props: {
-  routeRef: RouteRef<undefined>;
-  title: string;
-  icon: IconComponent;
-}) => {
-  const { routeRef, title, icon: Icon } = props;
-  const to = useRouteRef(routeRef)();
-  return (
-    <li>
-      <Link to={to}>
-        <Icon /> {title}
-      </Link>
-    </li>
-  );
-};
-
-const TestAppNavExtension = createExtension({
-  namespace: 'app',
-  name: 'nav',
-  attachTo: { id: 'app/layout', input: 'nav' },
-  inputs: {
-    items: createExtensionInput({
-      target: createNavItemExtension.targetDataRef,
-    }),
-  },
-  output: {
-    element: coreExtensionData.reactElement,
-  },
-  factory({ inputs }) {
-    return {
-      element: (
-        <nav>
-          <ul>
-            {inputs.items.map((item, index) => (
-              <NavItem
-                key={index}
-                icon={item.output.target.icon}
-                title={item.output.target.title}
-                routeRef={item.output.target.routeRef}
-              />
-            ))}
-          </ul>
-        </nav>
-      ),
-    };
-  },
-});
+import { resolveAppTree } from '../../../frontend-app-api/src/tree/resolveAppTree';
+// eslint-disable-next-line @backstage/no-relative-monorepo-imports
+import { resolveAppNodeSpecs } from '../../../frontend-app-api/src/tree/resolveAppNodeSpecs';
+// eslint-disable-next-line @backstage/no-relative-monorepo-imports
+import { instantiateAppNodeTree } from '../../../frontend-app-api/src/tree/instantiateAppNodeTree';
+// eslint-disable-next-line @backstage/no-relative-monorepo-imports
+import { readAppExtensionsConfig } from '../../../frontend-app-api/src/tree/readAppExtensionsConfig';
+import { TestApiRegistry } from '@backstage/test-utils';
+import { OpaqueExtensionDefinition } from '@internal/frontend';
 
 /** @public */
-export class ExtensionTester {
+export class ExtensionQuery<UOutput extends AnyExtensionDataRef> {
+  #node: AppNode;
+
+  constructor(node: AppNode) {
+    this.#node = node;
+  }
+
+  get node() {
+    return this.#node;
+  }
+
+  get instance() {
+    const instance = this.#node.instance;
+    if (!instance) {
+      throw new Error(
+        `Unable to access the instance of extension with ID '${
+          this.#node.spec.id
+        }'`,
+      );
+    }
+    return instance;
+  }
+
+  get<TId extends UOutput['id']>(
+    ref: ExtensionDataRef<any, TId, any>,
+  ): UOutput extends ExtensionDataRef<infer IData, TId, infer IConfig>
+    ? IConfig['optional'] extends true
+      ? IData | undefined
+      : IData
+    : never {
+    return this.instance.getData(ref);
+  }
+}
+
+/** @public */
+export class ExtensionTester<UOutput extends AnyExtensionDataRef> {
   /** @internal */
-  static forSubject<TConfig>(
-    subject: ExtensionDefinition<TConfig>,
-    options?: { config?: TConfig },
-  ): ExtensionTester {
+  static forSubject<T extends ExtensionDefinitionParameters>(
+    subject: ExtensionDefinition<T>,
+    options?: { config?: T['configInput'] },
+  ): ExtensionTester<NonNullable<T['output']>> {
     const tester = new ExtensionTester();
-    const { output, factory, ...rest } = toInternalExtensionDefinition(subject);
-    // attaching to app/routes to render as index route
-    const extension = createExtension({
-      ...rest,
-      attachTo: { id: 'app/routes', input: 'routes' },
-      output: {
-        ...output,
-        path: coreExtensionData.routePath,
-      },
-      factory: params => ({
-        ...factory(params),
-        path: '/',
-      }),
-    });
-    tester.add(extension, options);
+    tester.add(subject, options as T['configInput'] & {});
     return tester;
   }
 
+  #tree?: AppTree;
+
   readonly #extensions = new Array<{
     id: string;
-    definition: ExtensionDefinition<any>;
+    extension: Extension<any>;
+    definition: ExtensionDefinition;
     config?: JsonValue;
   }>();
 
-  add<TConfig>(
-    extension: ExtensionDefinition<TConfig>,
-    options?: { config?: TConfig },
-  ): ExtensionTester {
-    const { name, namespace } = extension;
+  add<T extends ExtensionDefinitionParameters>(
+    extension: ExtensionDefinition<T>,
+    options?: { config?: T['configInput'] },
+  ): ExtensionTester<UOutput> {
+    if (this.#tree) {
+      throw new Error(
+        'Cannot add more extensions accessing the extension tree',
+      );
+    }
+
+    const { name, namespace } = OpaqueExtensionDefinition.toInternal(extension);
 
     const definition = {
       ...extension,
@@ -129,10 +113,11 @@ export class ExtensionTester {
       name: !namespace && !name ? 'test' : name,
     };
 
-    const { id } = resolveExtensionDefinition(definition);
+    const resolvedExtension = resolveExtensionDefinition(definition);
 
     this.#extensions.push({
-      id,
+      id: resolvedExtension.id,
+      extension: resolvedExtension,
       definition,
       config: options?.config as JsonValue,
     });
@@ -140,22 +125,104 @@ export class ExtensionTester {
     return this;
   }
 
-  render(options?: { config?: JsonObject }): RenderResult {
-    const { config = {} } = options ?? {};
+  get<TId extends UOutput['id']>(
+    ref: ExtensionDataRef<any, TId, any>,
+  ): UOutput extends ExtensionDataRef<infer IData, TId, infer IConfig>
+    ? IConfig['optional'] extends true
+      ? IData | undefined
+      : IData
+    : never {
+    const tree = this.#resolveTree();
 
-    const [subject, ...rest] = this.#extensions;
+    return new ExtensionQuery(tree.root).get(ref);
+  }
+
+  query<T extends ExtensionDefinitionParameters>(
+    extension: ExtensionDefinition<T>,
+  ): ExtensionQuery<NonNullable<T['output']>> {
+    const tree = this.#resolveTree();
+
+    // Same fallback logic as in .add
+    const { name, namespace } = OpaqueExtensionDefinition.toInternal(extension);
+    const definition = {
+      ...extension,
+      name: !namespace && !name ? 'test' : name,
+    };
+    const actualId = resolveExtensionDefinition(definition).id;
+
+    const node = tree.nodes.get(actualId);
+
+    if (!node) {
+      throw new Error(
+        `Extension with ID '${actualId}' not found, please make sure it's added to the tester.`,
+      );
+    } else if (!node.instance) {
+      throw new Error(
+        `Extension with ID '${actualId}' has not been instantiated, because it is not part of the test subject's extension tree.`,
+      );
+    }
+    return new ExtensionQuery(node);
+  }
+
+  reactElement(): JSX.Element {
+    const tree = this.#resolveTree();
+
+    const element = new ExtensionQuery(tree.root).get(
+      coreExtensionData.reactElement,
+    );
+
+    if (!element) {
+      throw new Error(
+        'No element found. Make sure the extension has a `coreExtensionData.reactElement` output, or use the `.get(...)` to access output data directly instead',
+      );
+    }
+
+    return element;
+  }
+
+  #resolveTree() {
+    if (this.#tree) {
+      return this.#tree;
+    }
+
+    const [subject] = this.#extensions;
     if (!subject) {
       throw new Error(
         'No subject found. At least one extension should be added to the tester.',
       );
     }
 
+    const tree = resolveAppTree(
+      subject.id,
+      resolveAppNodeSpecs({
+        features: [],
+        builtinExtensions: this.#extensions.map(_ => _.extension),
+        parameters: readAppExtensionsConfig(this.#getConfig()),
+      }),
+    );
+
+    instantiateAppNodeTree(tree.root, TestApiRegistry.from());
+
+    this.#tree = tree;
+
+    return tree;
+  }
+
+  #getConfig(additionalConfig?: JsonObject): Config {
+    const [subject, ...rest] = this.#extensions;
+
     const extensionsConfig: JsonArray = [
-      ...rest.map(extension => ({
-        [extension.id]: {
-          config: extension.config,
-        },
-      })),
+      ...rest.flatMap(extension =>
+        extension.config
+          ? [
+              {
+                [extension.id]: {
+                  config: extension.config,
+                },
+              },
+            ]
+          : [],
+      ),
       {
         [subject.id]: {
           config: subject.config,
@@ -164,40 +231,24 @@ export class ExtensionTester {
       },
     ];
 
-    const finalConfig = {
-      ...config,
-      app: {
-        ...(typeof config.app === 'object' ? config.app : undefined),
-        extensions: extensionsConfig,
+    return ConfigReader.fromConfigs([
+      { context: 'render-config', data: additionalConfig ?? {} },
+      {
+        context: 'test',
+        data: {
+          app: {
+            extensions: extensionsConfig,
+          },
+        },
       },
-    };
-
-    const app = createSpecializedApp({
-      features: [
-        createExtensionOverrides({
-          extensions: [
-            ...this.#extensions.map(extension => extension.definition),
-            TestAppNavExtension,
-            createRouterExtension({
-              namespace: 'test',
-              Component: ({ children }) => (
-                <MemoryRouter>{children}</MemoryRouter>
-              ),
-            }),
-          ],
-        }),
-      ],
-      config: new MockConfigApi(finalConfig),
-    });
-
-    return render(app.createRoot());
+    ]);
   }
 }
 
 /** @public */
-export function createExtensionTester<TConfig>(
-  subject: ExtensionDefinition<TConfig>,
-  options?: { config?: TConfig },
-): ExtensionTester {
+export function createExtensionTester<T extends ExtensionDefinitionParameters>(
+  subject: ExtensionDefinition<T>,
+  options?: { config?: T['configInput'] },
+): ExtensionTester<NonNullable<T['output']>> {
   return ExtensionTester.forSubject(subject, options);
 }

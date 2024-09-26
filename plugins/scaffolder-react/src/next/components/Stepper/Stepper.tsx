@@ -35,7 +35,7 @@ import {
 } from './createAsyncValidators';
 import { ReviewState, type ReviewStateProps } from '../ReviewState';
 import { useTemplateSchema, useFormDataFromQuery } from '../../hooks';
-import validator from '@rjsf/validator-ajv8';
+import { customizeValidator } from '@rjsf/validator-ajv8';
 import { useTransformSchemaToProps } from '../../hooks/useTransformSchemaToProps';
 import { hasErrors } from './utils';
 import * as FieldOverrides from './FieldOverrides';
@@ -50,6 +50,11 @@ import { ReviewStepProps } from '@backstage/plugin-scaffolder-react';
 import { ErrorListTemplate } from './ErrorListTemplate';
 import { makeStyles } from '@material-ui/core/styles';
 import { PasswordWidget } from '../PasswordWidget/PasswordWidget';
+import ajvErrors from 'ajv-errors';
+import { merge } from 'lodash';
+
+const validator = customizeValidator();
+ajvErrors(validator.ajv);
 
 const useStyles = makeStyles(theme => ({
   backButton: {
@@ -110,10 +115,15 @@ export const Stepper = (stepperProps: StepperProps) => {
   const apiHolder = useApiHolder();
   const [activeStep, setActiveStep] = useState(0);
   const [isValidating, setIsValidating] = useState(false);
-  const [formState, setFormState] = useFormDataFromQuery(props.initialState);
+  const [initialState] = useFormDataFromQuery(props.initialState);
+  const [formState, setFormState] = useState<{
+    [step: string]: Record<string, JsonValue>;
+  }>();
 
   const [errors, setErrors] = useState<undefined | FormValidation>();
   const styles = useStyles();
+
+  const makeStepKey = (step: string | number) => `step-${step}`;
 
   const backLabel =
     presentation?.buttonLabels?.backButtonText ?? backButtonText;
@@ -150,15 +160,14 @@ export const Stepper = (stepperProps: StepperProps) => {
   };
 
   const handleChange = useCallback(
-    (e: IChangeEvent) =>
-      setFormState(current => ({ ...current, ...e.formData })),
-    [setFormState],
+    (e: IChangeEvent) => {
+      setFormState(current => ({
+        ...current,
+        [makeStepKey(activeStep)]: e.formData,
+      }));
+    },
+    [setFormState, activeStep],
   );
-
-  const handleCreate = useCallback(() => {
-    props.onCreate(formState);
-    analytics.captureEvent('click', `${createLabel}`);
-  }, [props, formState, analytics, createLabel]);
 
   const currentStep = useTransformSchemaToProps(steps[activeStep], { layouts });
 
@@ -186,8 +195,37 @@ export const Stepper = (stepperProps: StepperProps) => {
         return stepNum;
       });
     }
-    setFormState(current => ({ ...current, ...formData }));
+    setFormState(current => ({
+      ...current,
+      [makeStepKey(activeStep)]: formData,
+    }));
   };
+
+  const {
+    formContext: propFormContext,
+    uiSchema: propUiSchema,
+    ...restFormProps
+  } = props.formProps ?? {};
+
+  const mergedUiSchema = merge({}, propUiSchema, currentStep?.uiSchema);
+
+  const mergedState = useMemo(() => {
+    if (!formState) {
+      return initialState;
+    }
+    const { [makeStepKey(activeStep)]: activeState, ...historicalState } =
+      formState;
+    const chronologicalState = {
+      ...historicalState,
+      [makeStepKey(activeStep)]: activeState,
+    };
+    return merge({}, ...Object.values(chronologicalState));
+  }, [formState, activeStep, initialState]);
+
+  const handleCreate = useCallback(() => {
+    props.onCreate(mergedState);
+    analytics.captureEvent('click', `${createLabel}`);
+  }, [props, mergedState, analytics, createLabel]);
 
   return (
     <>
@@ -224,10 +262,10 @@ export const Stepper = (stepperProps: StepperProps) => {
           <Form
             validator={validator}
             extraErrors={errors as unknown as ErrorSchema}
-            formData={formState}
-            formContext={{ formData: formState }}
+            formData={mergedState}
+            formContext={{ ...propFormContext, formData: mergedState }}
             schema={currentStep.schema}
-            uiSchema={currentStep.uiSchema}
+            uiSchema={mergedUiSchema}
             onSubmit={handleNext}
             fields={fields}
             showErrorList="top"
@@ -237,7 +275,7 @@ export const Stepper = (stepperProps: StepperProps) => {
             experimental_defaultFormStateBehavior={{
               allOf: 'populateDefaults',
             }}
-            {...(props.formProps ?? {})}
+            {...restFormProps}
           >
             <div className={styles.footer}>
               <Button
@@ -261,7 +299,7 @@ export const Stepper = (stepperProps: StepperProps) => {
         ReviewStepComponent ? (
           <ReviewStepComponent
             disableButtons={isValidating}
-            formData={formState}
+            formData={mergedState}
             handleBack={handleBack}
             handleReset={() => {}}
             steps={steps}
@@ -269,7 +307,7 @@ export const Stepper = (stepperProps: StepperProps) => {
           />
         ) : (
           <>
-            <ReviewStateComponent formState={formState} schemas={steps} />
+            <ReviewStateComponent formState={mergedState} schemas={steps} />
             <div className={styles.footer}>
               <Button
                 onClick={handleBack}

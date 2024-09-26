@@ -24,8 +24,9 @@ import fs from 'fs-extra';
 import chalk from 'chalk';
 import ora from 'ora';
 import semver from 'semver';
-import { minimatch } from 'minimatch';
 import { OptionValues } from 'commander';
+import yaml from 'yaml';
+import z from 'zod';
 import { isError, NotFoundError } from '@backstage/errors';
 import { resolve as resolvePath } from 'path';
 import { run } from '../../lib/run';
@@ -36,7 +37,6 @@ import {
   Lockfile,
   YarnInfoInspectData,
 } from '../../lib/versioning';
-import { forbiddenDuplicatesFilter } from './lint';
 import { BACKSTAGE_JSON } from '@backstage/cli-common';
 import { runParallelWorkers } from '../../lib/parallel';
 import {
@@ -44,7 +44,6 @@ import {
   getManifestByVersion,
   ReleaseManifest,
 } from '@backstage/release-manifests';
-import { PackageGraph } from '@backstage/cli-node';
 import { migrateMovedPackages } from './migrate';
 
 function shouldUseGlobalAgent(): boolean {
@@ -79,6 +78,8 @@ type PkgVersionInfo = {
 export default async (opts: OptionValues) => {
   const lockfilePath = paths.resolveTargetRoot('yarn.lock');
   const lockfile = await Lockfile.load(lockfilePath);
+  const hasYarnPlugin = await getHasYarnPlugin();
+
   let pattern = opts.pattern;
 
   if (!pattern) {
@@ -125,8 +126,6 @@ export default async (opts: OptionValues) => {
 
   // Next check with the package registry to see which dependency ranges we need to bump
   const versionBumps = new Map<string, PkgVersionInfo[]>();
-  // Track package versions that we want to remove from yarn.lock in order to trigger a bump
-  const unlocked = Array<{ name: string; range: string; target: string }>();
 
   await runParallelWorkers({
     parallelismFactor: 4,
@@ -157,71 +156,12 @@ export default async (opts: OptionValues) => {
     },
   });
 
-  const filter = (name: string) => minimatch(name, pattern);
-
-  // Check for updates of transitive backstage dependencies
-  await runParallelWorkers({
-    parallelismFactor: 4,
-    items: lockfile.keys(),
-    async worker(name) {
-      // Only check @backstage packages and friends, we don't want this to do a full update of all deps
-      if (!filter(name)) {
-        return;
-      }
-
-      let target: string;
-      try {
-        target = await findTargetVersion(name);
-      } catch (error) {
-        if (isError(error) && error.name === 'NotFoundError') {
-          console.log(`Package info not found, ignoring package ${name}`);
-          return;
-        }
-        throw error;
-      }
-
-      for (const entry of lockfile.get(name) ?? []) {
-        // Ignore lockfile entries that don't satisfy the version range, since
-        // these can't cause the package to be locked to an older version
-        if (!semver.satisfies(target, entry.range)) {
-          continue;
-        }
-        // Unlock all entries that are within range but on the old version
-        unlocked.push({ name, range: entry.range, target });
-      }
-    },
-  });
-
-  console.log();
-
   // Write all discovered version bumps to package.json in this repo
-  if (versionBumps.size === 0 && unlocked.length === 0) {
+  if (versionBumps.size === 0) {
     console.log(chalk.green('All Backstage packages are up to date!'));
   } else {
     console.log(chalk.yellow('Some packages are outdated, updating'));
     console.log();
-
-    if (unlocked.length > 0) {
-      const removed = new Set<string>();
-      for (const { name, range, target } of unlocked) {
-        // Don't bother removing lockfile entries if they're already on the correct version
-        const existingEntry = lockfile.get(name)?.find(e => e.range === range);
-        if (existingEntry?.version === target) {
-          continue;
-        }
-        const key = JSON.stringify({ name, range });
-        if (!removed.has(key)) {
-          removed.add(key);
-          console.log(
-            `${chalk.magenta('unlocking')} ${name}@${chalk.yellow(
-              range,
-            )} ~> ${chalk.yellow(target)}`,
-          );
-          lockfile.remove(name, range);
-        }
-      }
-      await lockfile.save(lockfilePath);
-    }
 
     const breakingUpdates = new Map<string, { from: string; to: string }>();
     await runParallelWorkers({
@@ -241,12 +181,34 @@ export default async (opts: OptionValues) => {
           for (const depType of DEP_TYPES) {
             if (depType in pkgJson && dep.name in pkgJson[depType]) {
               const oldRange = pkgJson[depType][dep.name];
-              pkgJson[depType][dep.name] = dep.range;
+
+              // backstage:^ are written to the lockfile as
+              // backstage:<backstage-version>, so that updates to
+              // backstage.json can be detected during yarn install. In order to
+              // locate the corresponding lockfile entry for "backstage:^"
+              // versions, we need to perform the same transformation.
+              const oldLockfileRange = await asLockfileVersion(oldRange);
+
+              const useBackstageRange =
+                hasYarnPlugin &&
+                // Only use backstage:^ versions if the package is present in
+                // the manifest for the release we're bumping to.
+                releaseManifest.packages.find(
+                  ({ name: manifestPackageName }) =>
+                    dep.name === manifestPackageName,
+                ) &&
+                // Don't use backstage:^ versions for peerDependencies; they only
+                // support npm and workspace: versions.
+                depType !== 'peerDependencies';
+
+              const newRange = useBackstageRange ? 'backstage:^' : dep.range;
+
+              pkgJson[depType][dep.name] = newRange;
 
               // Check if the update was at least a pre-v1 minor or post-v1 major release
               const lockfileEntry = lockfile
                 .get(dep.name)
-                ?.find(entry => entry.range === oldRange);
+                ?.find(entry => entry.range === oldLockfileRange);
               if (lockfileEntry) {
                 const from = lockfileEntry.version;
                 const to = dep.target;
@@ -330,42 +292,25 @@ export default async (opts: OptionValues) => {
       console.log();
     }
 
+    if (hasYarnPlugin) {
+      console.log();
+      console.log(
+        chalk.blue(
+          `${chalk.bold(
+            'NOTE',
+          )}: this bump used backstage:^ versions in package.json files, since the Backstage ` +
+            `yarn plugin was detected in the repository. To migrate back to explicit npm versions, ` +
+            `remove the plugin by running "yarn plugin remove @yarnpkg/plugin-backstage", then ` +
+            `repeat this command.`,
+        ),
+      );
+      console.log();
+    }
+
     console.log(chalk.green('Version bump complete!'));
   }
 
   console.log();
-
-  // Finally we make sure the new lockfile doesn't have any duplicates
-  const dedupLockfile = await Lockfile.load(lockfilePath);
-
-  const result = dedupLockfile.analyze({
-    filter,
-    localPackages: PackageGraph.fromPackages(
-      await PackageGraph.listTargetPackages(),
-    ),
-  });
-
-  const forbiddenNewRanges = result.newRanges.filter(({ name }) =>
-    forbiddenDuplicatesFilter(name),
-  );
-  if (forbiddenNewRanges.length > 0) {
-    console.log(chalk.yellow('  ⚠️ Warning! ⚠️'));
-    console.log();
-    console.log(
-      chalk.yellow(
-        '  The below package(s) have incompatible duplicate installations, likely due to a bad dependency in a plugin.',
-      ),
-    );
-    console.log(
-      chalk.yellow(
-        '  You can investigate this by running `yarn why <package-name>`, and report the issue to the plugin maintainers.',
-      ),
-    );
-    console.log();
-    for (const { name } of forbiddenNewRanges) {
-      console.log(chalk.yellow(`    ${name}`));
-    }
-  }
 };
 
 export function createStrictVersionFinder(options: {
@@ -450,16 +395,23 @@ export function createVersionFinder(options: {
   };
 }
 
-export async function bumpBackstageJsonVersion(version: string) {
-  const backstageJsonPath = paths.resolveTargetRoot(BACKSTAGE_JSON);
-  const backstageJson = await fs.readJSON(backstageJsonPath).catch(e => {
+function getBackstageJsonPath() {
+  return paths.resolveTargetRoot(BACKSTAGE_JSON);
+}
+
+async function getBackstageJson() {
+  const backstageJsonPath = getBackstageJsonPath();
+  return fs.readJSON(backstageJsonPath).catch(e => {
     if (e.code === 'ENOENT') {
       // gracefully continue in case the file doesn't exist
       return;
     }
     throw e;
   });
+}
 
+export async function bumpBackstageJsonVersion(version: string) {
+  const backstageJson = await getBackstageJson();
   const prevVersion = backstageJson?.version;
 
   if (prevVersion === version) {
@@ -490,12 +442,59 @@ export async function bumpBackstageJsonVersion(version: string) {
   }
 
   await fs.writeJson(
-    backstageJsonPath,
+    getBackstageJsonPath(),
     { ...backstageJson, version },
     {
       spaces: 2,
       encoding: 'utf8',
     },
+  );
+}
+
+async function asLockfileVersion(version: string) {
+  if (version === 'backstage:^') {
+    return `backstage:${(await getBackstageJson())?.version}`;
+  }
+
+  return version;
+}
+
+const yarnRcSchema = z.object({
+  plugins: z
+    .array(
+      z.object({
+        path: z.string(),
+      }),
+    )
+    .optional(),
+});
+
+async function getHasYarnPlugin() {
+  const yarnRcPath = paths.resolveTargetRoot('.yarnrc.yml');
+  const yarnRcContent = await fs.readFile(yarnRcPath, 'utf-8').catch(e => {
+    if (e.code === 'ENOENT') {
+      // gracefully continue in case the file doesn't exist
+      return '';
+    }
+    throw e;
+  });
+
+  if (!yarnRcContent) {
+    return false;
+  }
+
+  const parseResult = yarnRcSchema.safeParse(yaml.parse(yarnRcContent));
+
+  if (!parseResult.success) {
+    throw new Error(
+      `Unexpected content in .yarnrc.yml: ${parseResult.error.toString()}`,
+    );
+  }
+
+  const yarnRc = parseResult.data;
+
+  return yarnRc.plugins?.some(
+    plugin => plugin.path === '.yarn/plugins/@yarnpkg/plugin-backstage.cjs',
   );
 }
 

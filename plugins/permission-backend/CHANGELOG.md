@@ -1,5 +1,176 @@
 # @backstage/plugin-permission-backend
 
+## 0.5.50-next.0
+
+### Patch Changes
+
+- 094eaa3: Remove references to in-repo backend-common
+- Updated dependencies
+  - @backstage/plugin-permission-node@0.8.4-next.0
+  - @backstage/plugin-auth-node@0.5.3-next.0
+  - @backstage/backend-plugin-api@1.0.1-next.0
+  - @backstage/config@1.2.0
+  - @backstage/errors@1.2.4
+  - @backstage/plugin-permission-common@0.8.1
+
+## 0.5.49
+
+### Patch Changes
+
+- d425fc4: Modules, plugins, and services are now `BackendFeature`, not a function that returns a feature.
+- c2b63ab: Updated dependency `supertest` to `^7.0.0`.
+- fcb9356: Deprecated `createRouter` and its router options in favour of the new backend system.
+- Updated dependencies
+  - @backstage/backend-common@0.25.0
+  - @backstage/backend-plugin-api@1.0.0
+  - @backstage/plugin-auth-node@0.5.2
+  - @backstage/plugin-permission-node@0.8.3
+  - @backstage/config@1.2.0
+  - @backstage/errors@1.2.4
+  - @backstage/plugin-permission-common@0.8.1
+
+## 0.5.49-next.2
+
+### Patch Changes
+
+- c2b63ab: Updated dependency `supertest` to `^7.0.0`.
+- Updated dependencies
+  - @backstage/backend-common@0.25.0-next.2
+  - @backstage/plugin-auth-node@0.5.2-next.2
+  - @backstage/backend-plugin-api@1.0.0-next.2
+  - @backstage/plugin-permission-node@0.8.3-next.2
+  - @backstage/config@1.2.0
+  - @backstage/errors@1.2.4
+  - @backstage/plugin-permission-common@0.8.1
+
+## 0.5.49-next.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @backstage/backend-common@0.25.0-next.1
+  - @backstage/plugin-auth-node@0.5.2-next.1
+  - @backstage/backend-plugin-api@0.9.0-next.1
+  - @backstage/config@1.2.0
+  - @backstage/errors@1.2.4
+  - @backstage/plugin-permission-common@0.8.1
+  - @backstage/plugin-permission-node@0.8.3-next.1
+
+## 0.5.49-next.0
+
+### Patch Changes
+
+- d425fc4: Modules, plugins, and services are now `BackendFeature`, not a function that returns a feature.
+- fcb9356: Deprecated `createRouter` and its router options in favour of the new backend system.
+- Updated dependencies
+  - @backstage/backend-plugin-api@0.9.0-next.0
+  - @backstage/plugin-permission-node@0.8.3-next.0
+  - @backstage/backend-common@0.25.0-next.0
+  - @backstage/plugin-auth-node@0.5.2-next.0
+  - @backstage/config@1.2.0
+  - @backstage/errors@1.2.4
+  - @backstage/plugin-permission-common@0.8.1
+
+## 0.5.47
+
+### Patch Changes
+
+- 93095ee: Make sure node-fetch is version 2.7.0 or greater
+- Updated dependencies
+  - @backstage/backend-plugin-api@0.8.0
+  - @backstage/backend-common@0.24.0
+  - @backstage/plugin-permission-common@0.8.1
+  - @backstage/plugin-auth-node@0.5.0
+  - @backstage/plugin-permission-node@0.8.1
+  - @backstage/config@1.2.0
+  - @backstage/errors@1.2.4
+
+## 0.5.47-next.3
+
+### Patch Changes
+
+- Updated dependencies
+  - @backstage/backend-plugin-api@0.8.0-next.3
+  - @backstage/backend-common@0.23.4-next.3
+  - @backstage/config@1.2.0
+  - @backstage/errors@1.2.4
+  - @backstage/plugin-auth-node@0.5.0-next.3
+  - @backstage/plugin-permission-common@0.8.1-next.1
+  - @backstage/plugin-permission-node@0.8.1-next.3
+
+## 0.5.47-next.2
+
+### Patch Changes
+
+- 93095ee: Make sure node-fetch is version 2.7.0 or greater
+- Updated dependencies
+  - @backstage/backend-plugin-api@0.8.0-next.2
+  - @backstage/plugin-permission-common@0.8.1-next.1
+  - @backstage/backend-common@0.23.4-next.2
+  - @backstage/plugin-auth-node@0.5.0-next.2
+  - @backstage/plugin-permission-node@0.8.1-next.2
+  - @backstage/config@1.2.0
+  - @backstage/errors@1.2.4
+
+## 0.5.47-next.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @backstage/plugin-permission-common@0.8.1-next.0
+  - @backstage/plugin-permission-node@0.8.1-next.1
+  - @backstage/backend-plugin-api@0.7.1-next.1
+  - @backstage/backend-common@0.23.4-next.1
+  - @backstage/config@1.2.0
+  - @backstage/errors@1.2.4
+  - @backstage/plugin-auth-node@0.4.18-next.1
+
+## 0.5.47-next.0
+
+### Patch Changes
+
+- Updated dependencies
+  - @backstage/backend-common@0.23.4-next.0
+  - @backstage/backend-plugin-api@0.7.1-next.0
+  - @backstage/config@1.2.0
+  - @backstage/errors@1.2.4
+  - @backstage/plugin-auth-node@0.4.18-next.0
+  - @backstage/plugin-permission-common@0.8.0
+  - @backstage/plugin-permission-node@0.8.1-next.0
+
+## 0.5.46
+
+### Patch Changes
+
+- ed10fd2: The `PermissionPolicy` interface has been updated to align with the recent changes to the Backstage auth system. The second argument to the `handle` method is now of the new `PolicyQueryUser` type. This type maintains the old fields from the `BackstageIdentityResponse`, which are now all deprecated. Instead, two new fields have been added, which allows access to the same information:
+
+  - `credentials` - A `BackstageCredentials` object, which is useful for making requests to other services on behalf of the user as part of evaluating the policy. This replaces the deprecated `token` field. See the [Auth Service documentation](https://backstage.io/docs/backend-system/core-services/auth#creating-request-tokens) for information about how to create a token using these credentials.
+  - `info` - A `BackstageUserInfo` object, which contains the same information as the deprecated `identity`, except for the `type` field that was redundant.
+
+  Most existing policies can be updated by replacing the `BackstageIdentityResponse` type with `PolicyQueryUser`, which is exported from `@backstage/plugin-permission-node`, as well as replacing any occurrences of `user?.identity` with `user?.info`.
+
+- Updated dependencies
+  - @backstage/backend-plugin-api@0.7.0
+  - @backstage/backend-common@0.23.3
+  - @backstage/plugin-permission-common@0.8.0
+  - @backstage/plugin-permission-node@0.8.0
+  - @backstage/plugin-auth-node@0.4.17
+  - @backstage/config@1.2.0
+  - @backstage/errors@1.2.4
+
+## 0.5.46-next.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @backstage/backend-common@0.23.3-next.1
+  - @backstage/backend-plugin-api@0.6.22-next.1
+  - @backstage/config@1.2.0
+  - @backstage/errors@1.2.4
+  - @backstage/plugin-auth-node@0.4.17-next.1
+  - @backstage/plugin-permission-common@0.7.14
+  - @backstage/plugin-permission-node@0.7.33-next.1
+
 ## 0.5.45-next.0
 
 ### Patch Changes

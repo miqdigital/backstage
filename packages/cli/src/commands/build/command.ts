@@ -17,11 +17,12 @@
 import { OptionValues } from 'commander';
 import { buildPackage, Output } from '../../lib/builder';
 import { findRoleFromCommand } from '../../lib/role';
-import { PackageRoles } from '@backstage/cli-node';
+import { PackageGraph, PackageRoles } from '@backstage/cli-node';
 import { paths } from '../../lib/paths';
 import { buildFrontend } from './buildFrontend';
 import { buildBackend } from './buildBackend';
 import { isValidUrl } from '../../lib/urls';
+import chalk from 'chalk';
 
 export async function command(opts: OptionValues): Promise<void> {
   const role = await findRoleFromCommand(opts);
@@ -49,6 +50,21 @@ export async function command(opts: OptionValues): Promise<void> {
     });
   }
 
+  // experimental
+  if ((role as string) === 'frontend-dynamic-container') {
+    console.log(
+      chalk.yellow(
+        `⚠️  WARNING: The 'frontend-dynamic-container' package role is experimental and will receive immediate breaking changes in the future.`,
+      ),
+    );
+    return buildFrontend({
+      targetDir: paths.targetDir,
+      configPaths: [],
+      writeStats: Boolean(opts.stats),
+      isModuleFederationRemote: true,
+    });
+  }
+
   const roleInfo = PackageRoles.getRoleInfo(role);
 
   const outputs = new Set<Output>();
@@ -66,5 +82,6 @@ export async function command(opts: OptionValues): Promise<void> {
   return buildPackage({
     outputs,
     minify: Boolean(opts.minify),
+    workspacePackages: await PackageGraph.listTargetPackages(),
   });
 }

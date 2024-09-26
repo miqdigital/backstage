@@ -61,6 +61,28 @@ const mockGitlabClient = {
         ];
     }),
   },
+  Repositories: {
+    tree: jest.fn(
+      async (
+        repoID: string | number,
+        options: { ref: string; recursive: boolean; path: string | undefined },
+      ) => {
+        if (repoID !== 'owner/repo') throw new Error('repo does not exist');
+        if (options.recursive === false) throw new Error('malformed options');
+        else {
+          return [
+            {
+              id: 'a1e8f8d745cc87e3a9248358d9352bb7f9a0aeba',
+              name: 'auto.txt',
+              type: 'blob',
+              path: 'source/auto.txt',
+              mode: '040000',
+            },
+          ];
+        }
+      },
+    ),
+  },
 };
 
 jest.mock('@gitbeaker/node', () => ({
@@ -386,7 +408,7 @@ describe('createGitLabMergeRequest', () => {
         'owner/repo',
         'new-mr',
         'Create my new MR',
-        [
+        expect.arrayContaining([
           {
             action: 'create',
             filePath: 'irrelevant/bar.txt',
@@ -401,13 +423,13 @@ describe('createGitLabMergeRequest', () => {
             content: 'SGVsbG8gdGhlcmUh',
             execute_filemode: false,
           },
-        ],
+        ]),
       );
     });
   });
 
   describe('createGitLabMergeRequestWithoutCommitAction', () => {
-    it('default commitAction is create', async () => {
+    it('default commitAction is auto', async () => {
       const input = {
         repoUrl: 'gitlab.com?repo=repo&owner=owner',
         title: 'Create my new MR',
@@ -417,7 +439,7 @@ describe('createGitLabMergeRequest', () => {
       };
       mockDir.setContent({
         [workspacePath]: {
-          source: { 'foo.txt': 'Hello there!' },
+          source: { 'foo.txt': 'Hello there!', 'auto.txt': 'File exist' },
           irrelevant: { 'bar.txt': 'Nothing to see here' },
         },
       });
@@ -428,7 +450,14 @@ describe('createGitLabMergeRequest', () => {
         'owner/repo',
         'new-mr',
         'Create my new MR',
-        [
+        expect.arrayContaining([
+          {
+            action: 'update',
+            filePath: 'source/auto.txt',
+            content: 'RmlsZSBleGlzdA==',
+            encoding: 'base64',
+            execute_filemode: false,
+          },
           {
             action: 'create',
             filePath: 'source/foo.txt',
@@ -436,7 +465,7 @@ describe('createGitLabMergeRequest', () => {
             encoding: 'base64',
             execute_filemode: false,
           },
-        ],
+        ]),
       );
     });
   });
@@ -509,6 +538,88 @@ describe('createGitLabMergeRequest', () => {
             execute_filemode: false,
           },
         ],
+      );
+    });
+
+    it('commitAction is auto when auto is passed in options', async () => {
+      const input = {
+        repoUrl: 'gitlab.com?repo=repo&owner=owner',
+        title: 'Create my new MR',
+        branchName: 'new-mr',
+        description: 'MR description',
+        commitAction: 'auto',
+      };
+      mockDir.setContent({
+        [workspacePath]: {
+          source: { 'foo.txt': 'Hello there!', 'auto.txt': 'File exist' },
+        },
+      });
+
+      const ctx = createMockActionContext({ input, workspacePath });
+      await instance.handler(ctx);
+
+      expect(mockGitlabClient.Commits.create).toHaveBeenCalledWith(
+        'owner/repo',
+        'new-mr',
+        'Create my new MR',
+        expect.arrayContaining([
+          {
+            action: 'update',
+            filePath: 'source/auto.txt',
+            content: 'RmlsZSBleGlzdA==',
+            encoding: 'base64',
+            execute_filemode: false,
+          },
+          {
+            action: 'create',
+            filePath: 'source/foo.txt',
+            content: 'SGVsbG8gdGhlcmUh',
+            encoding: 'base64',
+            execute_filemode: false,
+          },
+        ]),
+      );
+    });
+
+    it('commitAction is auto when auto is passed in options with targetPath', async () => {
+      const input = {
+        repoUrl: 'gitlab.com?repo=repo&owner=owner',
+        title: 'Create my new MR',
+        branchName: 'new-mr',
+        description: 'MR description',
+        commitAction: 'auto',
+        targetPath: 'source',
+      };
+      mockDir.setContent({
+        [workspacePath]: {
+          source: { 'foo.txt': 'Hello there!', 'auto.txt': 'File exist' },
+          irrevelant: {},
+        },
+      });
+
+      const ctx = createMockActionContext({ input, workspacePath });
+      await instance.handler(ctx);
+
+      expect(mockGitlabClient.Commits.create).toHaveBeenCalledWith(
+        'owner/repo',
+        'new-mr',
+        'Create my new MR',
+        expect.arrayContaining([
+          {
+            action: 'update',
+            filePath: 'source/auto.txt',
+            content: 'RmlsZSBleGlzdA==',
+            encoding: 'base64',
+            execute_filemode: false,
+          },
+          {
+            action: 'create',
+            filePath: 'source/foo.txt',
+            content: 'SGVsbG8gdGhlcmUh',
+            encoding: 'base64',
+            execute_filemode: false,
+          },
+        ]),
       );
     });
 

@@ -20,8 +20,7 @@ This provider can also be configured to ingest GitLab data based on [GitLab Webh
 As this provider is not one of the default providers, you will first need to install
 the gitlab catalog plugin:
 
-```bash
-# From your Backstage root directory
+```bash title="From your Backstage root directory"
 yarn --cwd packages/backend add @backstage/plugin-catalog-backend-module-gitlab
 ```
 
@@ -35,9 +34,9 @@ Then add the following to your backend initialization:
 // optional if you want to use AWS SQS instead of HTTP endpoints to receive external events
 // backend.add(import('@backstage/plugin-events-backend-module-aws-sqs/alpha'));
 // optional - event router for gitlab. See.: https://github.com/backstage/backstage/blob/master/plugins/events-backend-module-gitlab/README.md
-// backend.add(eventsModuleGitlabEventRouter());
+// backend.add(eventsModuleGitlabEventRouter);
 // optional - token validator for the gitlab topic
-// backend.add(eventsModuleGitlabWebhook());
+// backend.add(eventsModuleGitlabWebhook);
 backend.add(import('@backstage/plugin-catalog-backend-module-gitlab/alpha'));
 ```
 
@@ -154,7 +153,8 @@ catalog:
         group: example-group # Optional. Group and subgroup (if needed) to look for repositories. If not present the whole instance will be scanned
         entityFilename: catalog-info.yaml # Optional. Defaults to `catalog-info.yaml`
         projectPattern: '[\s\S]*' # Optional. Filters found projects based on provided patter. Defaults to `[\s\S]*`, which means to not filter anything
-        schedule: # Same options as in TaskScheduleDefinition. Optional for the Legacy Backend System
+        excludeRepos: [] # Optional. A list of project paths that should be excluded from discovery, e.g. group/subgroup/repo. Should not start or end with a slash.
+        schedule: # Same options as in SchedulerServiceTaskScheduleDefinition. Optional for the Legacy Backend System
           # supports cron, ISO duration, "human duration" as used in code
           frequency: { minutes: 30 }
           # supports ISO duration, "human duration" as used in code
