@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 The Backstage Authors
+ * Copyright 2025 The Backstage Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,25 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-// @ts-check
+import { JsonObject, JsonPrimitive } from '@backstage/types';
+import { config as winstonConfig } from 'winston';
 
 /**
- * @param {import('knex').Knex} knex
+ * @public
  */
-exports.up = async function up(knex) {
-  await knex.schema.alterTable('notification', table => {
-    table.text('link').nullable().alter();
-    table.dropColumn('done');
-  });
+export type WinstonLoggerLevelOverrideMatchers = {
+  [key: string]: JsonPrimitive | JsonPrimitive[] | undefined;
 };
 
 /**
- * @param {import('knex').Knex} knex
+ * @public
  */
-exports.down = async function down(knex) {
-  await knex.schema.alterTable('notification', table => {
-    table.text('link').notNullable().alter();
-    table.datetime('done').nullable();
-  });
+export type WinstonLoggerLevelOverride = {
+  matchers: WinstonLoggerLevelOverrideMatchers;
+  level: string;
 };
+
+export type RootLoggerConfig = {
+  level?: string;
+  meta?: JsonObject;
+  overrides?: WinstonLoggerLevelOverride[];
+};
+
+export const winstonLevels = winstonConfig.npm.levels;
